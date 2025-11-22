@@ -3,20 +3,33 @@ const router = express.Router();
 const crypto = require("crypto");
 const qs = require("qs");
 
-// ====== 🔥 藍新金流測試商店參數（官方提供） ======
+// ====== 🔥 NewebPay 測試金流參數 ======
 const MerchantID = "MS000000000";
-const HashKey = "12345678901234567890123456789012"; 
-const HashIV = "12345678901234567890123456789012";
+const HashKey = "12345678901234567890123456789012";  // 32 字元
+const HashIV = "1234567890123456";                   // 16 字元
 const PayGateWay = "https://ccore.newebpay.com/MPG/mpg_gateway";
 
-// ====== 🔥 建立訂單 API ======
+// ====== AES 加密 ======
+function encryptAES(data) {
+  const encData = qs.stringify(data);
+  const cipher = crypto.createCipheriv("aes-256-cbc", HashKey, HashIV);
+  let encrypted = cipher.update(encData, "utf8", "hex");
+  encrypted += cipher.final("hex");
+  return encrypted;
+}
+
+// ====== SHA256 Hash ======
+function shaEncrypt(hexData) {
+  const plainText = `HashKey=${HashKey}&${hexData}&HashIV=${HashIV}`;
+  return crypto.createHash("sha256").update(plainText).digest("hex").toUpperCase();
+}
+
+// ====== 建立訂單 API ======
 router.post("/createOrder", (req, res) => {
   const { name, phone, email, address, total, items } = req.body;
 
-  // 訂單編號 (自行產生)
-  const orderNo = "ES" + Date.now();
+  const orderNo = "ES" + Date.now();  // 訂單編號
 
-  // MPG 參數
   const data = {
     MerchantID,
     RespondType: "JSON",
@@ -25,39 +38,28 @@ router.post("/createOrder", (req, res) => {
     MerchantOrderNo: orderNo,
     Amt: Number(total),
     ItemDesc: "佑奕設計商品訂單",
-    Email: email,
+    Email: email
   };
 
-  // ====== AES 加密 (TradeInfo) ======
-  const encryptAES = (data) => {
-    const encString = qs.stringify(data);
-    const cipher = crypto.createCipheriv("aes-256-cbc", HashKey, HashIV);
-    let encrypted = cipher.update(encString, "utf8", "hex");
-    encrypted += cipher.final("hex");
-    return encrypted;
-  };
-
+  // AES 加密
   const TradeInfo = encryptAES(data);
 
-  // ====== SHA256 簽章 (TradeSha) ======
-  const TradeSha = crypto
-    .createHash("sha256")
-    .update(`HashKey=${HashKey}&${TradeInfo}&HashIV=${HashIV}`)
-    .digest("hex")
-    .toUpperCase();
+  // SHA 簽章
+  const TradeSha = shaEncrypt(TradeInfo);
 
-  // ====== 回傳給前端使用 ======
+  // 回傳給前端
   res.json({
-    PayGateWay,
     MerchantID,
     TradeInfo,
     TradeSha,
+    PayGateWay,
     Version: "2.0",
     orderNo,
   });
 });
 
 module.exports = router;
+
 
 // const express = require("express");
 // const router = express.Router();
