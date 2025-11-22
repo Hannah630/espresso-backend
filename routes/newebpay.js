@@ -20,7 +20,11 @@ function encryptAES(data) {
 // ====== SHA256 Hash ======
 function shaEncrypt(hexData) {
   const plainText = `HashKey=${HashKey}&${hexData}&HashIV=${HashIV}`;
-  return crypto.createHash("sha256").update(plainText).digest("hex").toUpperCase();
+  return crypto
+    .createHash("sha256")
+    .update(plainText)
+    .digest("hex")
+    .toUpperCase();
 }
 
 // ====== 建立訂單 API ======
@@ -36,7 +40,7 @@ router.post("/createOrder", (req, res) => {
     Version: "2.0",
     MerchantOrderNo: orderNo,
     Amt: Number(total),
-    ItemDesc: "佑奕設計商品訂單",
+    ItemDesc: encodeURIComponent("佑奕設計商品訂單"),
     Email: email,
   };
 
